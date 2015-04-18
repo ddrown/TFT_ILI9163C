@@ -717,6 +717,10 @@ void TFT_ILI9163C::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color
 	// Rudimentary clipping
 	if (boundaryCheck(x,y)) return;
 	if (((y + h) - 1) >= _height) h = _height-y;
+	if (h < 2 ) {
+		drawPixel(x, y, color);
+		return;
+	}
 	setAddr(x,y,x,(y+h)-1);
 	#if !defined SPI_MODE_DMA
 	while (h-- > 1) {
@@ -750,6 +754,10 @@ void TFT_ILI9163C::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color
 	// Rudimentary clipping
 	if (boundaryCheck(x,y)) return;
 	if (((x+w) - 1) >= _width)  w = _width-x;
+	if (w < 2 ) {
+		drawPixel(x, y, color);
+		return;
+	}
 	setAddr(x,y,(x+w)-1,y);
 	#if !defined SPI_MODE_DMA
 	while (w-- > 1) {
@@ -782,6 +790,10 @@ void TFT_ILI9163C::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t
 	if (boundaryCheck(x,y)) return;
 	if (((x + w) - 1) >= _width)  w = _width  - x;
 	if (((y + h) - 1) >= _height) h = _height - y;
+	if (w == 1 && h == 1) {
+		drawPixel(x, y, color);
+		return;
+	}
 	setAddr(x,y,(x+w)-1,(y+h)-1);
 	#if !defined SPI_MODE_DMA	
 	for (y = h;y > 0;y--) {
@@ -1121,8 +1133,8 @@ void TFT_ILI9163C::writePixel_cont_noCS(int16_t x, int16_t y, uint16_t color)
 void TFT_ILI9163C::writeVLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t h)
 {
 	// Rudimentary clipping
-//	if (boundaryCheck(x,y)) return;
-//	if (((y + h) - 1) >= _height) h = _height-y;
+	if (boundaryCheck(x,y)) return;
+	if (((y + h) - 1) >= _height) h = _height-y;
 	setAddrWindow_cont(x,y,x,(y+h)-1);
 	*rsport |=  rspinmask;
 	writeScanline(h); // send 2 bytes per pixel
@@ -1131,8 +1143,8 @@ void TFT_ILI9163C::writeVLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t h)
 void TFT_ILI9163C::writeHLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t w)
 {
 	// Rudimentary clipping
-//	if (boundaryCheck(x,y)) return;
-//	if (((x+w) - 1) >= _width)  w = _width-x;
+	if (boundaryCheck(x,y)) return;
+	if (((x+w) - 1) >= _width)  w = _width-x;
 	setAddrWindow_cont(x,y,(x+w)-1,y);
 	*rsport |=  rspinmask;
 	writeScanline(w);
@@ -1242,6 +1254,7 @@ void TFT_ILI9163C::fillScanline(uint16_t color, size_t n) {
 // Does not disable CS
 //    inline __attribute__((always_inline))
 void TFT_ILI9163C::writeScanline(size_t n) {
+	if (n == 0) return;
     SPI.dmaSend(_scanlineBuffer, n << 1);	// each pixel is 2 bytes
 }
 

@@ -10,8 +10,9 @@ You are using 4 wire SPI here, so:
  SCK:   13//Teensy3.x/Arduino UNO (for MEGA/DUE refere to arduino site)
  the rest of pin below:
  */
-#define __CS 10
-#define __DC 9
+#define __CS 8
+#define __RST 9
+#define __DC 10
 /*
 Teensy 3.x can use: 2,6,9,10,15,20,21,22,23
 Arduino's 8 bit: any
@@ -20,7 +21,7 @@ If you do not use reset, tie it to +3V3
 */
 
 
-TFT_ILI9163C display = TFT_ILI9163C(__CS, __DC);
+TFT_ILI9163C display = TFT_ILI9163C(__CS, __DC, __RST);
 
 float p = 3.1415926;
 
@@ -75,10 +76,10 @@ void setup(void) {
   delay(1000);
 
   testroundrects();
-  delay(500);
+  delay(5000);
 
   testtriangles();
-  delay(500);
+  delay(5000);
 
 }
 
@@ -199,7 +200,7 @@ void testtriangles() {
   int z = display.width();
   for(t = 0 ; t <= 15; t+=1) {
     display.drawTriangle(w, y, y, x, z, x, color);
-    x-=4;
+    x-=2;
     y+=4;
     z-=4;
     color+=100;

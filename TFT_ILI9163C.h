@@ -105,6 +105,7 @@ Done!
 
 /*	Modified 04/2015 by Victor G. Perez to add support for Maple and Maple mini, STM32F103 processors
 *	It can use SPI DMA transfers. To not use DMA, comment out the next define. 
+*	Requires function dmaSend in SPI library.
 */
 #define SPI_MODE_DMA 1
 
@@ -201,7 +202,8 @@ Not tested!
 	
 	Note 2: This is the offset between image in RAM and TFT. In that case 160 - 128 = 32;
 */
-//--------- Keep out hands from here!-------------
+
+//--------- Color definitions -------------
 
 #define	BLACK   0x0000
 #define	BLUE    0x001F
@@ -211,6 +213,7 @@ Not tested!
 #define MAGENTA 0xF81F
 #define YELLOW  0xFFE0  
 #define WHITE   0xFFFF
+#define TRANSPARENT     -1
 
 //--------- Used for STM32 DMA ------------
 #define SCANLINE_BUFFER_SIZE _GRAMHEIGH * 2
