@@ -25,8 +25,9 @@ Teensy3.x and Arduino's
  SCK:   13//Teensy3.x/Arduino UNO (for MEGA/DUE refere to arduino site)
  the rest of pin below:
  */
-#define __CS 10
-#define __DC 9
+#define __CS 8
+#define __RST 9
+#define __DC 10
 /*
 Teensy 3.x can use: 2,6,9,10,15,20,21,22,23
  Arduino's 8 bit: any
@@ -35,7 +36,7 @@ Teensy 3.x can use: 2,6,9,10,15,20,21,22,23
  */
 
 
-TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC);
+TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC, __RST);
 
 void setup() {
   tft.begin();
@@ -64,7 +65,7 @@ void setup() {
   tft.println("in the gobberwarts");
   tft.println("with my blurglecruncheon,");
   tft.println("see if I don't!");
-  tft.defineScrollArea(23,50);
+  tft.defineScrollArea(23,56);
   //try load again with this commented out!
 }
 

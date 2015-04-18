@@ -47,8 +47,9 @@ You are using 4 wire SPI here, so:
  SCK:   13//Teensy3.x/Arduino UNO (for MEGA/DUE refere to arduino site)
  the rest of pin below:
  */
-#define __CS 10
-#define __DC 9
+#define __CS 8
+#define __RST 9
+#define __DC 10
 /*
 Teensy 3.x can use: 2,6,9,10,15,20,21,22,23
 Arduino's 8 bit: any
@@ -57,14 +58,15 @@ If you do not use reset, tie it to +3V3
 */
 
 
-TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC);
+TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC, __RST);
 
 void setup() {
   tft.begin();
+  tft.fillScreen(WHITE);
 }
 
 void loop(){
-  tft.fillScreen(WHITE);
+
   r[0]=r[0]+1;
   r[1]=r[1]+1;
   if (r[0] == 36) r[0] = 0;
@@ -96,4 +98,12 @@ void loop(){
   tft.drawLine(p2x[7],p2y[7],p2x[4],p2y[4],BLACK);
   tft.drawLine(p2x[3],p2y[3],p2x[7],p2y[7],BLACK);
   delay(15);
+    for (int i=0;i<3;i++) {
+    tft.drawLine(p2x[i],p2y[i],p2x[i+1],p2y[i+1],WHITE);
+    tft.drawLine(p2x[i+4],p2y[i+4],p2x[i+5],p2y[i+5],WHITE);
+    tft.drawLine(p2x[i],p2y[i],p2x[i+4],p2y[i+4],WHITE);
+  }   
+  tft.drawLine(p2x[3],p2y[3],p2x[0],p2y[0],WHITE);
+  tft.drawLine(p2x[7],p2y[7],p2x[4],p2y[4],WHITE);
+  tft.drawLine(p2x[3],p2y[3],p2x[7],p2y[7],WHITE);
 }

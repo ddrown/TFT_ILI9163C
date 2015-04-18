@@ -102,6 +102,12 @@ Done!
 
 
 */
+
+/*	Modified 04/2015 by Victor G. Perez to add support for Maple and Maple mini, STM32F103 processors
+*	It can use SPI DMA transfers. To not use DMA, comment out the next define. 
+*/
+#define SPI_MODE_DMA 1
+
 #ifndef _TFT_ILI9163CLIB_H_
 #define _TFT_ILI9163CLIB_H_
 
@@ -110,9 +116,11 @@ Done!
 #include "Print.h"
 #include <Adafruit_GFX.h>
 
+
+
 //DID YOU HAVE A RED PCB, BLACk PCB or WHAT DISPLAY TYPE???????????? ---> SELECT HERE <----
-#define __144_RED_PCB__//128x128
-//#define __144_BLACK_PCB__//128x128
+//#define __144_RED_PCB__//128x128
+#define __144_BLACK_PCB__//128x128
 //#define __22_RED_PCB__//240x320
 //---------------------------------------
 
@@ -195,8 +203,17 @@ Not tested!
 */
 //--------- Keep out hands from here!-------------
 
-#define	BLACK   		0x0000
-#define WHITE   		0xFFFF
+#define	BLACK   0x0000
+#define	BLUE    0x001F
+#define	RED     0xF800
+#define	GREEN   0x07E0
+#define CYAN    0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW  0xFFE0  
+#define WHITE   0xFFFF
+
+//--------- Used for STM32 DMA ------------
+#define SCANLINE_BUFFER_SIZE _GRAMHEIGH * 2
 
 //ILI9163C registers-----------------------
 #define CMD_NOP     	0x00//Non operation
@@ -253,7 +270,7 @@ class TFT_ILI9163C : public Adafruit_GFX {
 
 	TFT_ILI9163C(uint8_t cspin,uint8_t dcpin,uint8_t rstpin);
 	TFT_ILI9163C(uint8_t CS, uint8_t DC);//connect rst pin to VDD
-	
+
 	void     	begin(void),
 				setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1),//graphic Addressing
 				setCursor(int16_t x,int16_t y),//char addressing
@@ -283,7 +300,22 @@ class TFT_ILI9163C : public Adafruit_GFX {
   //convert 24bit color into packet 16 bit one (credits for this are all mine)
 	inline uint16_t Color24To565(int32_t color_) { return ((((color_ >> 16) & 0xFF) / 8) << 11) | ((((color_ >> 8) & 0xFF) / 4) << 5) | (((color_) &  0xFF) / 8);}
 	void 		setBitrate(uint32_t n);	
-
+	#if defined SPI_MODE_DMA
+    uint8_t _scanlineBuffer[SCANLINE_BUFFER_SIZE];
+    uint8_t _hiByte, _loByte;
+	void		fillScanline(uint16_t color, size_t n),
+				writeScanline(size_t n),
+				drawLine(int16_t x0, int16_t y0,int16_t x1, int16_t y1, uint16_t color),
+				writePixel_cont_noCS(int16_t x, int16_t y, uint16_t color),
+				writeVLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t h),
+				writeHLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t w),
+				setAddrWindow_cont(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1),
+				writecommand_cont(uint8_t c),
+				writedata16_cont(uint16_t d),
+				drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color),
+				drawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
+	#endif //SPI_MODE_DMA
+				
  private:
 	uint8_t		_Mactrl_Data;//container for the memory access control data
 	uint8_t		_colorspaceData;
@@ -291,6 +323,8 @@ class TFT_ILI9163C : public Adafruit_GFX {
 	void 		setAddr(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 	void 		endProc(void);
 	uint8_t		sleep;
+
+
 	#if defined(__MK20DX128__) || defined(__MK20DX256__)
 	//
 	#else
@@ -301,13 +335,20 @@ class TFT_ILI9163C : public Adafruit_GFX {
 	void 		chipInit();
 	bool 		boundaryCheck(int16_t x,int16_t y);
 	void 		homeAddress();
-	#if defined(__AVR__)
+	#if defined (__AVR__)
 	void				spiwrite(uint8_t);
 	volatile uint8_t 	*dataport, *clkport, *csport, *rsport;
 	uint8_t 			_cs,_rs,_sid,_sclk,_rst;
 	uint8_t  			datapinmask, clkpinmask, cspinmask, rspinmask;
 	#endif //  #ifdef __AVR__
-
+	
+	#if defined (__STM32F1__)
+	void				spiwrite(uint8_t);
+	volatile uint32_t 	*dataport, *clkport, *csport, *rsport;
+	uint8_t 			_cs,_rs,_sid,_sclk,_rst;
+	uint32_t  			datapinmask, clkpinmask, cspinmask, rspinmask;
+	#endif //  #ifdef __STM32F1__
+	
 	#if defined(__SAM3X8E__)
 	void				spiwrite(uint8_t);
 	Pio 				*dataport, *clkport, *csport, *rsport;

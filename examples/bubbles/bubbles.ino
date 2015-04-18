@@ -38,7 +38,13 @@ You are using 4 wire SPI here, so:
  SCK:   13//Teensy3.x/Arduino UNO (for MEGA/DUE refere to arduino site)
  the rest of pin below:
  */
-TFT_ILI9163C tft = TFT_ILI9163C(10, 9);
+ 
+#define __CS 8
+#define __RST 9
+#define __DC 10
+
+
+TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC, __RST);
 
 int16_t sine[SCALE+(SCALE/4)];
 int16_t *cosi = &sine[SCALE/4];

@@ -4,7 +4,6 @@
 #include "wiring_private.h"
 #include <SPI.h>
 
-
 //constructors
 TFT_ILI9163C::TFT_ILI9163C(uint8_t cspin,uint8_t dcpin,uint8_t rstpin) : Adafruit_GFX(_TFTWIDTH,_TFTHEIGHT){
 	_cs   = cspin;
@@ -146,6 +145,69 @@ void TFT_ILI9163C::setBitrate(uint32_t n){
 	SPI.setClockDivider(divider);
 	#endif
 }
+
+#elif defined(__STM32F1__)
+// Maple & Maple mini
+
+inline void TFT_ILI9163C::spiwrite(uint8_t c){
+    SPI.write(c);
+}
+
+void TFT_ILI9163C::writecommand(uint8_t c){
+	#ifdef SPI_HAS_TRANSACTION
+    SPI.beginTransaction(SPISettings(SPICLOCK, MSBFIRST, SPI_MODE0));
+    #endif
+	*rsport &= ~rspinmask;//low
+	*csport &= ~cspinmask;//low
+	spiwrite(c);
+	*csport |= cspinmask;//hi
+	#ifdef SPI_HAS_TRANSACTION
+	SPI.endTransaction();
+	#endif
+}
+
+void TFT_ILI9163C::writedata(uint8_t c){
+	#ifdef SPI_HAS_TRANSACTION
+    SPI.beginTransaction(SPISettings(SPICLOCK, MSBFIRST, SPI_MODE0));
+    #endif
+	*rsport |=  rspinmask;
+	*csport &= ~cspinmask;
+	spiwrite(c);
+	*csport |= cspinmask;
+	#ifdef SPI_HAS_TRANSACTION
+	SPI.endTransaction();
+	#endif
+} 
+
+void TFT_ILI9163C::writedata16(uint16_t d){
+	#ifdef SPI_HAS_TRANSACTION
+    SPI.beginTransaction(SPISettings(SPICLOCK, MSBFIRST, SPI_MODE0));
+    #endif
+	*rsport |=  rspinmask;
+	*csport &= ~cspinmask;
+	spiwrite(d >> 8);
+	spiwrite(d);
+	*csport |= cspinmask;
+	#ifdef SPI_HAS_TRANSACTION
+	SPI.endTransaction();
+	#endif
+} 
+
+void TFT_ILI9163C::setBitrate(uint32_t n){
+	#if !defined (SPI_HAS_TRANSACTION)
+	if (n >= 8000000) {
+		SPI.setClockDivider(SPI_CLOCK_DIV2);
+	} else if (n >= 4000000) {
+		SPI.setClockDivider(SPI_CLOCK_DIV4);
+	} else if (n >= 2000000) {
+		SPI.setClockDivider(SPI_CLOCK_DIV8);
+	} else {
+		SPI.setClockDivider(SPI_CLOCK_DIV16);
+	}
+	#endif
+}
+
+///////////////
 #elif defined(__MK20DX128__) || defined(__MK20DX256__)
 //Teensy 3.0 & 3.1  
 
@@ -158,7 +220,7 @@ void TFT_ILI9163C::setBitrate(uint32_t n){
 
 void TFT_ILI9163C::begin(void) {
 	sleep = 0;
-#ifdef __AVR__
+#if defined (__AVR__) || (__STM32F1__)
 	pinMode(_rs, OUTPUT);
 	pinMode(_cs, OUTPUT);
 	csport    = portOutputRegister(digitalPinToPort(_cs));
@@ -333,6 +395,7 @@ void TFT_ILI9163C::chipInit() {
 	writecommand_last(CMD_RAMWR);//Memory Write
 	SPI.endTransaction();
 	delay(1);
+
 	#else
 	writecommand(CMD_SWRESET);//software reset
 	delay(500);
@@ -543,6 +606,15 @@ void TFT_ILI9163C::clearScreen(uint16_t color) {
 		}
 		writecommand_last(CMD_NOP);
 		endProc();
+	#elsif defined SPI_MODE_DMA	
+		fillScanline(color, _GRAMHEIGH);
+		*rsport |=  rspinmask;
+		*csport &= ~cspinmask;
+		for (px = 0; px < _GRAMWIDTH; px++){
+			writeScanline(_GRAMHEIGH);
+		}
+		*csport |= cspinmask;
+
 	#else
 		//writecommand(CMD_RAMWR);
 		setAddr(0x00,0x00,_GRAMWIDTH,_GRAMHEIGH);//go home
@@ -595,6 +667,7 @@ void TFT_ILI9163C::writeScreen24(const uint32_t *bitmap,uint16_t size) {
 		_setAddrWindow(0x00,0x00,_GRAMWIDTH,_GRAMHEIGH);//home
 		endProc();
 	#else
+	
 		writecommand(CMD_RAMWR);
 		for (px = 0;px < size; px++){
 			color = Color24To565(bitmap[px]);
@@ -616,8 +689,6 @@ void TFT_ILI9163C::setCursor(int16_t x, int16_t y) {
 	cursor_x = x;
 	cursor_y = y;
 }
-
-
 
 
 
@@ -647,6 +718,7 @@ void TFT_ILI9163C::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color
 	if (boundaryCheck(x,y)) return;
 	if (((y + h) - 1) >= _height) h = _height-y;
 	setAddr(x,y,x,(y+h)-1);
+	#if !defined SPI_MODE_DMA
 	while (h-- > 1) {
 		#if defined(__MK20DX128__) || defined(__MK20DX256__)
 		if (h == 0){
@@ -658,7 +730,15 @@ void TFT_ILI9163C::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color
 			writedata16(color);
 		#endif
 	}
+
 	endProc();
+	#else //SPI_MODE_DMA
+	fillScanline(color, h);
+	*rsport |=  rspinmask;
+	*csport &= ~cspinmask;
+	writeScanline(h);
+	*csport |= cspinmask;
+	#endif
 }
 
 bool TFT_ILI9163C::boundaryCheck(int16_t x,int16_t y){
@@ -671,6 +751,7 @@ void TFT_ILI9163C::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color
 	if (boundaryCheck(x,y)) return;
 	if (((x+w) - 1) >= _width)  w = _width-x;
 	setAddr(x,y,(x+w)-1,y);
+	#if !defined SPI_MODE_DMA
 	while (w-- > 1) {
 		#if defined(__MK20DX128__) || defined(__MK20DX256__)
 		if (w == 0){
@@ -683,6 +764,13 @@ void TFT_ILI9163C::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color
 		#endif
 	}
 	endProc();
+	#else //SPI_MODE_DMA
+	fillScanline(color, w);
+	*rsport |=  rspinmask;
+	*csport &= ~cspinmask;
+	writeScanline(w);
+	*csport |= cspinmask;
+	#endif
 }
 
 void TFT_ILI9163C::fillScreen(uint16_t color) {
@@ -695,8 +783,9 @@ void TFT_ILI9163C::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t
 	if (((x + w) - 1) >= _width)  w = _width  - x;
 	if (((y + h) - 1) >= _height) h = _height - y;
 	setAddr(x,y,(x+w)-1,(y+h)-1);
+	#if !defined SPI_MODE_DMA	
 	for (y = h;y > 0;y--) {
-		for (x = w;x > 1;x--) {
+		for (x = w;x > 0;x--) {
 			#if defined(__MK20DX128__) || defined(__MK20DX256__)
 				writedata16_cont(color);
 			#else
@@ -708,6 +797,15 @@ void TFT_ILI9163C::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t
 		#endif
 	}
 	endProc();
+	#else //SPI_MODE_DMA
+	fillScanline(color, w);
+	*rsport |=  rspinmask;
+	*csport &= ~cspinmask;
+	for (y = h;y > 0;y--) {
+		writeScanline(w);
+	}
+	*csport |= cspinmask;
+	#endif
 }
 
 #if defined(__MK20DX128__) || defined(__MK20DX256__)
@@ -904,6 +1002,251 @@ void TFT_ILI9163C::setRotation(uint8_t m) {
 	#endif
 }
 
+#if SPI_MODE_DMA
+void TFT_ILI9163C::drawLine(int16_t x0, int16_t y0,int16_t x1, int16_t y1, uint16_t color)
+{
+	if (y0 == y1) {
+		if (x1 > x0) {
+			drawFastHLine(x0, y0, x1 - x0 + 1, color);
+		}
+		else if (x1 < x0) {
+			drawFastHLine(x1, y0, x0 - x1 + 1, color);
+		}
+		else {
+			drawPixel(x0, y0, color);
+		}
+		return;
+	}
+	else if (x0 == x1) {
+		if (y1 > y0) {
+			drawFastVLine(x0, y0, y1 - y0 + 1, color);
+		}
+		else {
+			drawFastVLine(x0, y1, y0 - y1 + 1, color);
+		}
+		return;
+	}
+
+	bool steep = abs(y1 - y0) > abs(x1 - x0);
+	if (steep) {
+		swap(x0, y0);
+		swap(x1, y1);
+	}
+	if (x0 > x1) {
+		swap(x0, x1);
+		swap(y0, y1);
+	}
+
+	int16_t dx, dy;
+	dx = x1 - x0;
+	dy = abs(y1 - y0);
+
+	int16_t err = dx / 2;
+	int16_t ystep;
+
+	if (y0 < y1) {
+		ystep = 1;
+	}
+	else {
+		ystep = -1;
+	}
+
+	int16_t xbegin = x0;
+	fillScanline(color, SCANLINE_BUFFER_SIZE/2);
+	*csport &= ~cspinmask;
+	if (steep) {
+		for (; x0 <= x1; x0++) {
+			err -= dy;
+			if (err < 0) {
+				int16_t len = x0 - xbegin;
+				if (len) {
+					//drawFastVLine (y0, xbegin, len + 1, color);
+					writeVLine_cont_noCS_noFill(y0, xbegin, len + 1);
+				}
+				else {
+					//drawPixel(x0, y0, color);
+					writePixel_cont_noCS(y0, x0, color);
+				}
+				xbegin = x0 + 1;
+				y0 += ystep;
+				err += dx;
+			}
+		}
+		if (x0 > xbegin + 1) {
+			writeVLine_cont_noCS_noFill(y0, xbegin, x0 - xbegin);
+		}
+
+	}
+	else {
+		for (; x0 <= x1; x0++) {
+			err -= dy;
+			if (err < 0) {
+				int16_t len = x0 - xbegin;
+				if (len) {
+					//drawFastVLine(xbegin, y0, len + 1, color);
+					writeHLine_cont_noCS_noFill(xbegin, y0, len + 1);
+				}
+				else {
+					//drawPixel(x0, y0, color);
+					writePixel_cont_noCS(x0, y0, color);
+				}
+				xbegin = x0 + 1;
+				y0 += ystep;
+				err += dx;
+			}
+		}
+		if (x0 > xbegin + 1) {
+			writeHLine_cont_noCS_noFill(xbegin, y0, x0 - xbegin);
+		}
+	}
+	*csport |= cspinmask;
+}
+
+void TFT_ILI9163C::writePixel_cont_noCS(int16_t x, int16_t y, uint16_t color)
+{
+    if (boundaryCheck(x,y)) return;
+	if ((x < 0) || (y < 0)) return;
+	setAddrWindow_cont(x,y,x+1,y+1);
+	#ifdef SPI_HAS_TRANSACTION
+    SPI.beginTransaction(SPISettings(SPICLOCK, MSBFIRST, SPI_MODE0));
+    #endif
+	*rsport |=  rspinmask;
+	spiwrite(color >> 8);
+	spiwrite(color);
+	#ifdef SPI_HAS_TRANSACTION
+	SPI.endTransaction();
+	#endif
+}
+
+void TFT_ILI9163C::writeVLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t h)
+{
+	// Rudimentary clipping
+//	if (boundaryCheck(x,y)) return;
+//	if (((y + h) - 1) >= _height) h = _height-y;
+	setAddrWindow_cont(x,y,x,(y+h)-1);
+	*rsport |=  rspinmask;
+	writeScanline(h); // send 2 bytes per pixel
+}
+
+void TFT_ILI9163C::writeHLine_cont_noCS_noFill(int16_t x, int16_t y, int16_t w)
+{
+	// Rudimentary clipping
+//	if (boundaryCheck(x,y)) return;
+//	if (((x+w) - 1) >= _width)  w = _width-x;
+	setAddrWindow_cont(x,y,(x+w)-1,y);
+	*rsport |=  rspinmask;
+	writeScanline(w);
+}
+
+void TFT_ILI9163C::setAddrWindow_cont(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+	writecommand_cont(CMD_CLMADRS); // Column
+	if (rotation == 0 || rotation > 1){
+		writedata16_cont(x0);
+		writedata16_cont(x1);
+	} else {
+		writedata16_cont(x0 + __OFFSET);
+		writedata16_cont(x1 + __OFFSET);
+	}
+	writecommand_cont(CMD_PGEADRS); // Page
+	if (rotation == 0){
+		writedata16_cont(y0 + __OFFSET);
+		writedata16_cont(y1 + __OFFSET);
+	} else {
+		writedata16_cont(y0);
+		writedata16_cont(y1);
+	}
+	writecommand_cont(CMD_RAMWR); //Into RAM
+}
+
+void TFT_ILI9163C::writedata16_cont(uint16_t d){
+	#ifdef SPI_HAS_TRANSACTION
+    SPI.beginTransaction(SPISettings(SPICLOCK, MSBFIRST, SPI_MODE0));
+    #endif
+	*rsport |=  rspinmask;
+	spiwrite(d >> 8);
+	spiwrite(d);
+	#ifdef SPI_HAS_TRANSACTION
+	SPI.endTransaction();
+	#endif
+} 
+
+void TFT_ILI9163C::writecommand_cont(uint8_t c){
+	#ifdef SPI_HAS_TRANSACTION
+    SPI.beginTransaction(SPISettings(SPICLOCK, MSBFIRST, SPI_MODE0));
+    #endif
+	*rsport &= ~rspinmask;//low
+	spiwrite(c);
+	#ifdef SPI_HAS_TRANSACTION
+	SPI.endTransaction();
+	#endif
+}
+
+void TFT_ILI9163C::drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color){
+	fillScanline(color, SCANLINE_BUFFER_SIZE/2);
+	*csport &= ~cspinmask;
+	writeHLine_cont_noCS_noFill(x, y, w);
+	writeHLine_cont_noCS_noFill(x, y+h-1, w);
+	writeVLine_cont_noCS_noFill(x, y, h);
+	writeVLine_cont_noCS_noFill(x+w-1, y, h);
+	*csport |= cspinmask;
+}
+
+void TFT_ILI9163C::drawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color)
+{
+	int16_t f = 1 - r;
+	int16_t ddF_x = 1;
+	int16_t ddF_y = -2 * r;
+	int16_t x = 0;
+	int16_t y = r;
+	*csport &= ~cspinmask;
+	writePixel_cont_noCS(x0, y0 + r, color);
+	writePixel_cont_noCS(x0, y0 - r, color);
+	writePixel_cont_noCS(x0 + r, y0, color);
+	writePixel_cont_noCS(x0 - r, y0, color);
+
+	while (x < y) {
+		if (f >= 0) {
+			y--;
+			ddF_y += 2;
+			f += ddF_y;
+		}
+		x++;
+		ddF_x += 2;
+		f += ddF_x;
+
+		writePixel_cont_noCS(x0 + x, y0 + y, color);
+		writePixel_cont_noCS(x0 - x, y0 + y, color);
+		writePixel_cont_noCS(x0 + x, y0 - y, color);
+		writePixel_cont_noCS(x0 - x, y0 - y, color);
+		writePixel_cont_noCS(x0 + y, y0 + x, color);
+		writePixel_cont_noCS(x0 - y, y0 + x, color);
+		writePixel_cont_noCS(x0 + y, y0 - x, color);
+		writePixel_cont_noCS(x0 - y, y0 - x, color);
+	}
+	*csport |= cspinmask;
+}
+
+// Sets first n pixels in scanline buffer to the specified color
+//    __attribute__((always_inline))
+void TFT_ILI9163C::fillScanline(uint16_t color, size_t n) {
+    _hiByte = highByte(color);
+    _loByte = lowByte(color);
+    for (uint16_t i = 0; i < (n << 1); i += 2)
+    {
+      _scanlineBuffer[i] = _hiByte;
+      _scanlineBuffer[i + 1] = _loByte;
+    }
+}
+
+// Enables CS, sets DC and writes n-bytes from the scanline buffer via DMA
+// Does not disable CS
+//    inline __attribute__((always_inline))
+void TFT_ILI9163C::writeScanline(size_t n) {
+    SPI.dmaSend(_scanlineBuffer, n << 1);	// each pixel is 2 bytes
+}
+
+
+#endif
 
 
 
