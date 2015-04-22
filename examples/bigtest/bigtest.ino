@@ -76,10 +76,10 @@ void setup(void) {
   delay(1000);
 
   testroundrects();
-  delay(5000);
+  delay(500);
 
   testtriangles();
-  delay(5000);
+  delay(500);
 
 }
 

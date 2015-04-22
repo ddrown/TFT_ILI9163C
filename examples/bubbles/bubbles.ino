@@ -10,7 +10,7 @@
 #define sinf sin
 #endif
 
-#define NDOTS 256			// Number of dots 512
+#define NDOTS 128			// Number of dots 512
 #define SCALE 2048//4096
 #define INCREMENT 512//512
 #define PI2 6.283185307179586476925286766559
@@ -67,7 +67,52 @@ void setup()
   initialize();
 }
 
+uint16_t isqrt(uint32_t a) {
+    uint32_t rem = 0;
+    uint32_t root = 0;
+    uint8_t i;
 
+    for (i = 0; i < 16; i++) {
+        root <<= 1;
+        rem <<= 2;
+        rem += a >> 30;
+        a <<= 2;
+
+        if (root < rem) {
+            root++;
+            rem -= root;
+            root++;
+        }
+    }
+
+    return (uint16_t) (root >> 1);
+}
+
+uint16_t asqrt(int32_t x){
+	/*      From http://medialab.freaknet.org/martin/src/sqrt/sqrt.c
+	 *	Logically, these are unsigned. We need the sign bit to test
+	 *	whether (op - res - one) underflowed.
+	 */
+	int32_t op, res, one;
+
+	op = x;
+	res = 0;
+
+	/* "one" starts at the highest power of four <= than the argument. */
+
+	one = 1 << 30;	/* second-to-top bit set */
+	while (one > op) one >>= 2;
+
+	while (one != 0) {
+		if (op >= res + one) {
+			op = op - (res + one);
+			res = res +  2 * one;
+		}
+		res /= 2;
+		one /= 4;
+	}
+	return (uint16_t) (res);
+}
 
 void matrix (int16_t xyz[3][NDOTS], uint16_t col[NDOTS]){
   static uint32_t t = 0;
@@ -80,7 +125,7 @@ void matrix (int16_t xyz[3][NDOTS], uint16_t col[NDOTS]){
     xyz[0][i] = x;
     xyz[1][i] = y;
 
-    d = sqrt(x * x + y * y); 	/* originally a fastsqrt() call */
+    d = asqrt(x * x + y * y); 	/* originally a fastsqrt() call */
     s = sine[(t * 30) % SCALE] + SCALE;
 
     xyz[2][i] = sine[(d + s) % SCALE] * sine[(t * 10) % SCALE] / SCALE / 2;

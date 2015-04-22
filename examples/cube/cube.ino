@@ -62,7 +62,7 @@ void loop(){
   if (r[0] == 36) r[0] = 0;
   if (r[1] == 36) r[1] = 0;
   if (r[2] == 36) r[2] = 0;
-  for (int i=0;i<8;i++)
+  for (int i=0;i<10;i++)
   {
     float px2 = px[i];
     float py2 = cos_d[r[0]]*py[i] - sin_d[r[0]]*pz[i];

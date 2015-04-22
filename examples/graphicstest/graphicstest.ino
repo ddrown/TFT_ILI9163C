@@ -35,6 +35,7 @@ void setup() {
   Serial.begin(9600);
   //while (!Serial);
   tft.begin();
+  delay (2000);
 
   Serial.println(F("Benchmark                Time (microseconds)"));
   Serial.print(F("Screen fill              "));

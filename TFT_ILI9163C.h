@@ -105,9 +105,27 @@ Done!
 
 /*	Modified 04/2015 by Victor G. Perez to add support for Maple and Maple mini, STM32F103 processors
 *	It can use SPI DMA transfers. To not use DMA, comment out the next define. 
-*	Requires function dmaSend in SPI library.
+*	Requires function dmaSend in SPI library. Result with 16bit SPI and DMA modes enabled in Maple Mini.
+Benchmark                Time (microseconds)
+Screen fill              40676
+Text                     11756
+Lines                    42841
+Horiz/Vert Lines         4033
+Rectangles (outline)     3724
+Rectangles (filled)      65417
+Circles (filled)         28576
+Circles (outline)        22532
+Triangles (outline)      14877
+Triangles (filled)       34927
+Rounded rects (outline)  18777
+Rounded rects (filled)   77142
+Done!
+
+
 */
+#define SPI_16BIT
 #define SPI_MODE_DMA 1
+#define SPEED_UP 1 // Enables extra calculations in the circles routine to use fastVLine and fastHLine, only in DMA mode.
 
 #ifndef _TFT_ILI9163CLIB_H_
 #define _TFT_ILI9163CLIB_H_
@@ -216,7 +234,7 @@ Not tested!
 #define TRANSPARENT     -1
 
 //--------- Used for STM32 DMA ------------
-#define SCANLINE_BUFFER_SIZE _GRAMHEIGH * 2
+#define SCANLINE_BUFFER_SIZE _GRAMHEIGH
 
 //ILI9163C registers-----------------------
 #define CMD_NOP     	0x00//Non operation
@@ -304,7 +322,8 @@ class TFT_ILI9163C : public Adafruit_GFX {
 	inline uint16_t Color24To565(int32_t color_) { return ((((color_ >> 16) & 0xFF) / 8) << 11) | ((((color_ >> 8) & 0xFF) / 4) << 5) | (((color_) &  0xFF) / 8);}
 	void 		setBitrate(uint32_t n);	
 	#if defined SPI_MODE_DMA
-    uint8_t _scanlineBuffer[SCANLINE_BUFFER_SIZE];
+    uint16_t _scanlineBuffer16[SCANLINE_BUFFER_SIZE];
+	uint8_t* _scanlineBuffer8 = reinterpret_cast<uint8_t *>(_scanlineBuffer16);
     uint8_t _hiByte, _loByte;
 	void		fillScanline(uint16_t color, size_t n),
 				writeScanline(size_t n),
