@@ -1,5 +1,5 @@
 
-#include "SPI.h"
+#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <TFT_ILI9163C.h>
 
@@ -35,13 +35,12 @@ void setup() {
   Serial.begin(9600);
   //while (!Serial);
   tft.begin();
-  delay (2000);
 
   Serial.println(F("Benchmark                Time (microseconds)"));
   Serial.print(F("Screen fill              "));
   Serial.println(testFillScreen());
   delay(500);
-
+/*
   Serial.print(F("Text                     "));
   Serial.println(testText());
   delay(3000);
@@ -61,13 +60,13 @@ void setup() {
   Serial.print(F("Rectangles (filled)      "));
   Serial.println(testFilledRects(YELLOW,MAGENTA));
   delay(500);
-
+*/
   Serial.print(F("Circles (filled)         "));
   Serial.println(testFilledCircles(10,MAGENTA));
-
+  delay  (3000);
   Serial.print(F("Circles (outline)        "));
   Serial.println(testCircles(10,WHITE));
-  delay(500);
+  while(1);
 
   Serial.print(F("Triangles (outline)      "));
   Serial.println(testTriangles());

@@ -106,6 +106,12 @@ Done!
 /*	Modified 04/2015 by Victor G. Perez to add support for Maple and Maple mini, STM32F103 processors
 *	It can use SPI DMA transfers. To not use DMA, comment out the next define. 
 *	Requires function dmaSend in SPI library. Result with 16bit SPI and DMA modes enabled in Maple Mini.
+*/
+#define SPI_16BIT
+#define SPI_MODE_DMA 1
+#define SPEED_UP 1 // Enables extra calculations in the circles routine to use fastVLine and fastHLine, only in DMA mode.
+
+/*
 Benchmark                Time (microseconds)
 Screen fill              40676
 Text                     11756
@@ -123,9 +129,6 @@ Done!
 
 
 */
-#define SPI_16BIT
-#define SPI_MODE_DMA 1
-#define SPEED_UP 1 // Enables extra calculations in the circles routine to use fastVLine and fastHLine, only in DMA mode.
 
 #ifndef _TFT_ILI9163CLIB_H_
 #define _TFT_ILI9163CLIB_H_
