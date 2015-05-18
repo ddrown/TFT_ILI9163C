@@ -213,3 +213,7 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+TFT_ILI9163C - Copy.cpp.good8bits
+TFT_ILI9163C - Copy.h.good8bits
+TFT_ILI9163C.h.ori
+*.ori
